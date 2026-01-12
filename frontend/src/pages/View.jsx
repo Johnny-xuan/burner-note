@@ -3,10 +3,12 @@ import { useParams, useLocation, Link } from 'react-router-dom'
 import { Flame, Lock, Loader2, AlertTriangle, Download, FileText, Key } from 'lucide-react'
 import { importKey, decryptText, decryptFile, hashPassword } from '../utils/crypto'
 import { getNoteMeta, readNote } from '../utils/api'
+import { useTranslation } from '../utils/LanguageContext'
 
 export default function View() {
   const { id } = useParams()
   const location = useLocation()
+  const { t } = useTranslation()
   
   const [status, setStatus] = useState('loading') // loading, needKey, password, ready, destroyed, error
   const [requiresPassword, setRequiresPassword] = useState(false)
@@ -47,13 +49,13 @@ export default function View() {
       }
     } catch (err) {
       setStatus('error')
-      setError('无法获取笔记信息')
+      setError(t('view.errorNotFound'))
     }
   }
 
   const handleKeySubmit = () => {
     if (!manualKey.trim()) {
-      setError('请输入解密密钥')
+      setError(t('view.keyError'))
       return
     }
     setError('')
@@ -106,9 +108,9 @@ export default function View() {
     } catch (err) {
       console.error('Decrypt error:', err)
       if (err.message === 'Invalid password') {
-        setError('密码错误')
+        setError(t('view.errorInvalidPassword'))
       } else {
-        setError('解密失败：链接可能已损坏或已被阅读')
+        setError(t('view.errorDecryptFailed'))
         setStatus('error')
       }
     } finally {
@@ -128,7 +130,7 @@ export default function View() {
     return (
       <div className="max-w-2xl mx-auto text-center py-16">
         <Loader2 className="w-12 h-12 animate-spin text-burn-500 mx-auto mb-4" />
-        <p className="text-gray-400">正在检查笔记...</p>
+        <p className="text-gray-400">{t('view.checking')}</p>
       </div>
     )
   }
@@ -141,9 +143,9 @@ export default function View() {
           <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
             <Key className="w-8 h-8 text-yellow-500" />
           </div>
-          <h1 className="text-2xl font-bold mb-2">需要解密密钥</h1>
+          <h1 className="text-2xl font-bold mb-2">{t('view.needKeyTitle')}</h1>
           <p className="text-gray-400 mb-6">
-            链接似乎被截断了，请输入发送者提供的解密密钥
+            {t('view.needKeyDesc')}
           </p>
 
           <div className="mb-6">
@@ -151,7 +153,7 @@ export default function View() {
               type="text"
               value={manualKey}
               onChange={(e) => setManualKey(e.target.value)}
-              placeholder="粘贴解密密钥"
+              placeholder={t('view.placeholderKey')}
               className="w-full px-4 py-3 bg-gray-950 border border-gray-800 rounded-xl focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none transition text-center font-mono text-sm"
               onKeyDown={(e) => e.key === 'Enter' && handleKeySubmit()}
             />
@@ -169,11 +171,11 @@ export default function View() {
             className="inline-flex items-center gap-2 px-8 py-4 bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-lg font-semibold transition"
           >
             <Key className="w-5 h-5" />
-            继续
+            {t('view.btnContinue')}
           </button>
 
           <p className="mt-6 text-xs text-gray-500">
-            解密密钥应该由发送者单独提供给你
+            {t('view.keyHint')}
           </p>
         </div>
       </div>
@@ -188,14 +190,14 @@ export default function View() {
           <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6">
             <Flame className="w-8 h-8 text-gray-500" />
           </div>
-          <h1 className="text-2xl font-bold mb-2">笔记已销毁</h1>
-          <p className="text-gray-400 mb-6">此笔记已被阅读并永久销毁，或已过期</p>
+          <h1 className="text-2xl font-bold mb-2">{t('view.destroyedTitle')}</h1>
+          <p className="text-gray-400 mb-6">{t('view.destroyedDesc')}</p>
           <Link
             to="/create"
             className="inline-flex items-center gap-2 px-6 py-3 bg-burn-600 hover:bg-burn-700 rounded-lg font-medium transition"
           >
             <Flame className="w-5 h-5" />
-            创建新笔记
+            {t('view.btnNew')}
           </Link>
         </div>
       </div>
@@ -210,13 +212,13 @@ export default function View() {
           <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
             <AlertTriangle className="w-8 h-8 text-red-500" />
           </div>
-          <h1 className="text-2xl font-bold mb-2">出错了</h1>
+          <h1 className="text-2xl font-bold mb-2">{t('view.errorTitle')}</h1>
           <p className="text-gray-400 mb-6">{error}</p>
           <Link
             to="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-medium transition"
           >
-            返回首页
+            {t('view.btnBack')}
           </Link>
         </div>
       </div>
@@ -233,8 +235,8 @@ export default function View() {
               <Flame className="w-5 h-5 text-burn-500" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">已解密的笔记</h1>
-              <p className="text-sm text-burn-400">此笔记已被永久销毁</p>
+              <h1 className="text-xl font-bold">{t('view.decryptedTitle')}</h1>
+              <p className="text-sm text-burn-400">{t('view.decryptedDesc')}</p>
             </div>
           </div>
 
@@ -248,7 +250,7 @@ export default function View() {
           {/* 文件附件 */}
           {files.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-sm font-medium text-gray-400">附件文件</h3>
+              <h3 className="text-sm font-medium text-gray-400">{t('view.labelFiles')}</h3>
               {files.map((file, i) => (
                 <div 
                   key={i}
@@ -266,7 +268,7 @@ export default function View() {
                     className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded text-sm transition"
                   >
                     <Download className="w-4 h-4" />
-                    下载
+                    {t('view.btnDownload')}
                   </button>
                 </div>
               ))}
@@ -275,8 +277,7 @@ export default function View() {
 
           <div className="mt-8 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
             <p className="text-yellow-400 text-sm">
-              <strong>⚠️ 注意：</strong>此笔记已从服务器永久删除，刷新页面后将无法再次查看。
-              如需保留，请立即复制内容。
+              {t('view.warningDestroyed')}
             </p>
           </div>
         </div>
@@ -297,12 +298,12 @@ export default function View() {
         </div>
         
         <h1 className="text-2xl font-bold mb-2">
-          {requiresPassword ? '需要密码' : '准备查看'}
+          {requiresPassword ? t('view.passwordTitle') : t('view.decryptedTitle')}
         </h1>
         <p className="text-gray-400 mb-6">
           {requiresPassword 
-            ? '此笔记设置了密码保护，请输入密码查看'
-            : '点击下方按钮查看笔记，查看后将立即销毁'
+            ? t('view.passwordDesc')
+            : t('view.hintDestroy')
           }
         </p>
 
@@ -312,7 +313,7 @@ export default function View() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="输入密码"
+              placeholder={t('view.placeholderPassword')}
               className="w-full max-w-xs px-4 py-3 bg-gray-950 border border-gray-800 rounded-xl focus:border-burn-500 focus:ring-1 focus:ring-burn-500 outline-none transition text-center"
               onKeyDown={(e) => e.key === 'Enter' && handleRead()}
             />
@@ -333,18 +334,18 @@ export default function View() {
           {decrypting ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              解密中...
+              {t('view.btnReading')}
             </>
           ) : (
             <>
               <Flame className="w-5 h-5" />
-              查看并销毁
+              {t('view.btnRead')}
             </>
           )}
         </button>
 
         <p className="mt-6 text-sm text-gray-500">
-          点击后笔记将从服务器永久删除
+          {t('view.hintDestroy')}
         </p>
       </div>
     </div>

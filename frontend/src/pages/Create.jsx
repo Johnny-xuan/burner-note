@@ -2,16 +2,17 @@ import { useState } from 'react'
 import { Flame, Lock, Clock, Paperclip, Copy, Check, X, Loader2 } from 'lucide-react'
 import { generateKey, exportKey, encryptText, encryptFile, hashPassword } from '../utils/crypto'
 import { createNote } from '../utils/api'
+import { useTranslation } from '../utils/LanguageContext'
 
 const EXPIRE_OPTIONS = [
-  { label: '1 小时', value: 3600 },
-  { label: '24 小时', value: 86400 },
-  { label: '3 天', value: 259200 },
-  { label: '7 天', value: 604800 }
+  { label: 'expire.1h', value: 3600 },
+  { label: 'expire.24h', value: 86400 },
+  { label: 'expire.3d', value: 259200 },
+  { label: 'expire.7d', value: 604800 }
 ]
 
 // 密码强度评估
-function getPasswordStrength(password) {
+function getPasswordStrength(password, t) {
   if (!password) return { score: 0, label: '', color: '' }
   
   let score = 0
@@ -23,17 +24,18 @@ function getPasswordStrength(password) {
   
   const levels = [
     { score: 0, label: '', color: '' },
-    { score: 1, label: '弱', color: 'bg-red-500' },
-    { score: 2, label: '较弱', color: 'bg-orange-500' },
-    { score: 3, label: '中等', color: 'bg-yellow-500' },
-    { score: 4, label: '强', color: 'bg-green-500' },
-    { score: 5, label: '很强', color: 'bg-green-600' },
+    { score: 1, label: t('create.passwordStrength.weak'), color: 'bg-red-500' },
+    { score: 2, label: t('create.passwordStrength.fair'), color: 'bg-orange-500' },
+    { score: 3, label: t('create.passwordStrength.normal'), color: 'bg-yellow-500' },
+    { score: 4, label: t('create.passwordStrength.strong'), color: 'bg-green-500' },
+    { score: 5, label: t('create.passwordStrength.veryStrong'), color: 'bg-green-600' },
   ]
   
   return levels[Math.min(score, 5)]
 }
 
 export default function Create() {
+  const { t } = useTranslation()
   const [content, setContent] = useState('')
   const [password, setPassword] = useState('')
   const [expiresIn, setExpiresIn] = useState(86400)
@@ -55,7 +57,7 @@ export default function Create() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!content.trim()) {
-      setError('请输入笔记内容')
+      setError(t('create.errorEmpty'))
       return
     }
 
@@ -98,7 +100,7 @@ export default function Create() {
       setShareUrl(url)
     } catch (err) {
       console.error(err)
-      setError(err.message || '创建失败，请重试')
+      setError(err.message || t('create.errorFailed'))
     } finally {
       setLoading(false)
     }
@@ -153,20 +155,20 @@ export default function Create() {
             <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
               <Check className="w-8 h-8 text-green-500" />
             </div>
-            <h1 className="text-2xl font-bold mb-2">笔记已创建</h1>
-            <p className="text-gray-400">分享以下信息给收件人，打开后将自动销毁</p>
+            <h1 className="text-2xl font-bold mb-2">{t('create.successTitle')}</h1>
+            <p className="text-gray-400">{t('create.successDesc')}</p>
           </div>
 
           {/* 完整链接 */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-gray-400">完整链接（推荐）</label>
+              <label className="text-sm font-medium text-gray-400">{t('create.labelFullLink')}</label>
               <button
                 onClick={copyAll}
                 className="flex items-center gap-1 text-xs text-burn-400 hover:text-burn-300"
               >
                 {copied === 'all' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                {copied === 'all' ? '已复制' : '复制'}
+                {copied === 'all' ? t('create.copied') : t('create.copy')}
               </button>
             </div>
             <div className="bg-gray-950 rounded-lg p-3">
@@ -177,19 +179,19 @@ export default function Create() {
           {/* 分离显示 - 防止链接截断 */}
           <div className="p-4 bg-yellow-500/5 border border-yellow-500/20 rounded-xl mb-6">
             <p className="text-yellow-400 text-sm font-medium mb-4">
-              ⚠️ 如果链接在分享时被截断，请分开发送：
+              {t('create.warningSplit')}
             </p>
             
             {/* 笔记链接 */}
             <div className="mb-4">
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs text-gray-500">笔记链接</label>
+                <label className="text-xs text-gray-500">{t('create.labelNoteUrl')}</label>
                 <button
                   onClick={copyUrl}
                   className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-300"
                 >
                   {copied === 'url' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                  {copied === 'url' ? '已复制' : '复制'}
+                  {copied === 'url' ? t('create.copied') : t('create.copy')}
                 </button>
               </div>
               <div className="bg-gray-900 rounded p-2">
@@ -200,13 +202,13 @@ export default function Create() {
             {/* 解密密钥 */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs text-gray-500">解密密钥</label>
+                <label className="text-xs text-gray-500">{t('create.labelNoteKey')}</label>
                 <button
                   onClick={copyKey}
                   className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-300"
                 >
                   {copied === 'key' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                  {copied === 'key' ? '已复制' : '复制'}
+                  {copied === 'key' ? t('create.copied') : t('create.copy')}
                 </button>
               </div>
               <div className="bg-gray-900 rounded p-2">
@@ -221,18 +223,18 @@ export default function Create() {
               className="flex items-center gap-2 px-6 py-3 bg-burn-600 hover:bg-burn-700 rounded-lg font-medium transition"
             >
               {copied === 'all' ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-              {copied === 'all' ? '已复制' : '复制完整链接'}
+              {copied === 'all' ? t('create.copied') : t('create.copyAll')}
             </button>
             <button
               onClick={reset}
               className="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-medium transition"
             >
-              创建新笔记
+              {t('create.btnNew')}
             </button>
           </div>
 
           <p className="mt-6 text-center text-xs text-gray-500">
-            此链接只能打开一次 · 建议通过端到端加密的渠道分享
+            {t('create.footerHint')}
           </p>
         </div>
       </div>
@@ -242,18 +244,18 @@ export default function Create() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold mb-2">创建加密笔记</h1>
-        <p className="text-gray-400">内容将在浏览器中加密，服务器无法读取</p>
+        <h1 className="text-3xl font-bold mb-2">{t('create.title')}</h1>
+        <p className="text-gray-400">{t('create.subtitle')}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* 内容输入 */}
         <div>
-          <label className="block text-sm font-medium mb-2">笔记内容</label>
+          <label className="block text-sm font-medium mb-2">{t('create.labelContent')}</label>
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="在这里输入你的秘密信息..."
+            placeholder={t('create.placeholderContent')}
             rows={8}
             className="w-full px-4 py-3 bg-gray-900/50 border border-gray-800 rounded-xl focus:border-burn-500 focus:ring-1 focus:ring-burn-500 outline-none transition resize-none"
           />
@@ -263,13 +265,13 @@ export default function Create() {
         <div>
           <label className="flex items-center gap-2 text-sm font-medium mb-2">
             <Lock className="w-4 h-4" />
-            密码保护（可选）
+            {t('create.labelPassword')}
           </label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="设置密码后，收件人需要输入密码才能查看"
+            placeholder={t('create.placeholderPassword')}
             className="w-full px-4 py-3 bg-gray-900/50 border border-gray-800 rounded-xl focus:border-burn-500 focus:ring-1 focus:ring-burn-500 outline-none transition"
           />
           {/* 密码强度指示器 */}
@@ -278,19 +280,19 @@ export default function Create() {
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-1.5 bg-gray-800 rounded-full overflow-hidden">
                   <div 
-                    className={`h-full transition-all ${getPasswordStrength(password).color}`}
-                    style={{ width: `${(getPasswordStrength(password).score / 5) * 100}%` }}
+                    className={`h-full transition-all ${getPasswordStrength(password, t).color}`}
+                    style={{ width: `${(getPasswordStrength(password, t).score / 5) * 100}%` }}
                   />
                 </div>
                 <span className={`text-xs ${
-                  getPasswordStrength(password).score <= 2 ? 'text-red-400' : 
-                  getPasswordStrength(password).score <= 3 ? 'text-yellow-400' : 'text-green-400'
+                  getPasswordStrength(password, t).score <= 2 ? 'text-red-400' : 
+                  getPasswordStrength(password, t).score <= 3 ? 'text-yellow-400' : 'text-green-400'
                 }`}>
-                  {getPasswordStrength(password).label}
+                  {getPasswordStrength(password, t).label}
                 </span>
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                建议：8+ 字符，包含大小写字母、数字和特殊符号
+                {t('create.passwordStrength.hint')}
               </p>
             </div>
           )}
@@ -300,7 +302,7 @@ export default function Create() {
         <div>
           <label className="flex items-center gap-2 text-sm font-medium mb-2">
             <Clock className="w-4 h-4" />
-            过期时间
+            {t('create.labelExpire')}
           </label>
           <div className="grid grid-cols-4 gap-3">
             {EXPIRE_OPTIONS.map(opt => (
@@ -314,7 +316,7 @@ export default function Create() {
                     : 'bg-gray-900/50 border-gray-800 hover:border-gray-700'
                 }`}
               >
-                {opt.label}
+                {t(opt.label)}
               </button>
             ))}
           </div>
@@ -324,7 +326,7 @@ export default function Create() {
         <div>
           <label className="flex items-center gap-2 text-sm font-medium mb-2">
             <Paperclip className="w-4 h-4" />
-            文件附件（可选，最多 5 个）
+            {t('create.labelFiles')}
           </label>
           <div className="border-2 border-dashed border-gray-800 rounded-xl p-6 text-center hover:border-gray-700 transition">
             <input
@@ -340,8 +342,8 @@ export default function Create() {
               className={`cursor-pointer ${files.length >= 5 ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Paperclip className="w-8 h-8 text-gray-500 mx-auto mb-2" />
-              <p className="text-gray-400 text-sm">点击选择文件或拖放文件到这里</p>
-              <p className="text-gray-500 text-xs mt-1">单个文件最大 10MB</p>
+              <p className="text-gray-400 text-sm">{t('create.fileHint')}</p>
+              <p className="text-gray-500 text-xs mt-1">{t('create.fileSizeLimit')}</p>
             </label>
           </div>
           
@@ -378,12 +380,12 @@ export default function Create() {
           {loading ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              加密中...
+              {t('create.btnEncrypt')}
             </>
           ) : (
             <>
               <Flame className="w-5 h-5" />
-              创建加密笔记
+              {t('create.btnCreate')}
             </>
           )}
         </button>
