@@ -6,6 +6,10 @@ import { redisClient } from '../utils/redis.js'
 import { saveFile, getFile, deleteNoteFiles } from '../utils/storage.js'
 import { readLimiter, createLimiter } from '../middleware/rateLimiter.js'
 
+function isValidId(id) {
+  return /^[A-Za-z0-9_-]{1,32}$/.test(id)
+}
+
 const router = Router()
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -26,10 +30,14 @@ function safeCompare(a, b) {
 // 创建笔记
 router.post('/', createLimiter, upload.array('files', 5), async (req, res) => {
   try {
-    const { ciphertext, iv, passwordHash, expiresIn, fileMetadata } = req.body
+    const { ciphertext, iv, passwordHash, passwordSalt, expiresIn, fileMetadata } = req.body
     
     if (!ciphertext || !iv) {
       return res.status(400).json({ error: 'Missing ciphertext or iv' })
+    }
+
+    if (ciphertext.length > 2 * 1024 * 1024) {
+      return res.status(413).json({ error: 'Note content too large' })
     }
 
     const noteId = nanoid(16)
@@ -38,7 +46,14 @@ router.post('/', createLimiter, upload.array('files', 5), async (req, res) => {
     // 处理文件上传（文件已在前端加密）
     const files = []
     if (req.files && req.files.length > 0) {
-      const metadata = fileMetadata ? JSON.parse(fileMetadata) : []
+      let metadata = []
+      if (fileMetadata) {
+        try {
+          metadata = JSON.parse(fileMetadata)
+        } catch {
+          return res.status(400).json({ error: 'Invalid file metadata' })
+        }
+      }
       for (let i = 0; i < req.files.length; i++) {
         const file = req.files[i]
         const meta = metadata[i] || {}
@@ -46,9 +61,9 @@ router.post('/', createLimiter, upload.array('files', 5), async (req, res) => {
         await saveFile(noteId, filename, file.buffer)
         files.push({
           filename,
-          originalName: meta.name || file.originalname,
+          originalName: String(meta.name || file.originalname || '').slice(0, 255),
           size: meta.size || file.size,
-          type: meta.type || file.mimetype
+          type: /^[\w.+-]+\/[\w.+-]+$/.test(meta.type) ? meta.type : 'application/octet-stream'
         })
       }
     }
@@ -62,6 +77,7 @@ router.post('/', createLimiter, upload.array('files', 5), async (req, res) => {
     }
     if (passwordHash) {
       noteData.passwordHash = passwordHash
+      if (passwordSalt) noteData.passwordSalt = passwordSalt
     }
 
     await redisClient.hSet(`note:${noteId}`, noteData)
@@ -81,17 +97,22 @@ router.post('/', createLimiter, upload.array('files', 5), async (req, res) => {
 router.get('/:id/meta', async (req, res) => {
   try {
     const { id } = req.params
+    if (!isValidId(id)) return res.status(400).json({ error: 'Invalid note ID' })
     const exists = await redisClient.exists(`note:${id}`)
     
     if (!exists) {
       return res.status(404).json({ error: 'Note not found or already destroyed' })
     }
 
-    const passwordHash = await redisClient.hGet(`note:${id}`, 'passwordHash')
-    
+    const [passwordHash, passwordSalt] = await Promise.all([
+      redisClient.hGet(`note:${id}`, 'passwordHash'),
+      redisClient.hGet(`note:${id}`, 'passwordSalt')
+    ])
+
     res.json({
       exists: true,
-      requiresPassword: !!passwordHash
+      requiresPassword: !!passwordHash,
+      ...(passwordHash && passwordSalt ? { passwordSalt } : {})
     })
   } catch (err) {
     console.error('Get note meta error:', err)
@@ -103,6 +124,7 @@ router.get('/:id/meta', async (req, res) => {
 router.post('/:id/read', readLimiter, async (req, res) => {
   try {
     const { id } = req.params
+    if (!isValidId(id)) return res.status(400).json({ error: 'Invalid note ID' })
     const { passwordHash: providedHash } = req.body
 
     const noteData = await redisClient.hGetAll(`note:${id}`)
@@ -116,7 +138,13 @@ router.post('/:id/read', readLimiter, async (req, res) => {
       return res.status(401).json({ error: 'Invalid password' })
     }
 
-    // 获取文件数据
+    // 原子性抢占笔记 — 确保只有一个请求能读取（防止并发竞争）
+    const claimed = await redisClient.del(`note:${id}`)
+    if (claimed === 0) {
+      return res.status(404).json({ error: 'Note not found or already destroyed' })
+    }
+
+    // 获取文件数据（笔记已从 Redis 删除，继续读取文件）
     const files = JSON.parse(noteData.files || '[]')
     const fileContents = []
     for (const file of files) {
@@ -129,8 +157,6 @@ router.post('/:id/read', readLimiter, async (req, res) => {
       }
     }
 
-    // 立即删除笔记和文件
-    await redisClient.del(`note:${id}`)
     await deleteNoteFiles(id)
 
     res.json({

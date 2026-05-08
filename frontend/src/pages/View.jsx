@@ -18,6 +18,7 @@ export default function View() {
   const [files, setFiles] = useState([])
   const [error, setError] = useState('')
   const [decrypting, setDecrypting] = useState(false)
+  const [passwordSalt, setPasswordSalt] = useState(null)
 
   // 从 URL hash 获取密钥，或使用手动输入的密钥
   const keyBase64 = location.hash.slice(1) || manualKey.trim()
@@ -29,6 +30,7 @@ export default function View() {
   const checkNote = async () => {
     try {
       const meta = await getNoteMeta(id)
+      if (meta.passwordSalt) setPasswordSalt(meta.passwordSalt)
       if (!meta.exists) {
         setStatus('destroyed')
         return
@@ -75,7 +77,7 @@ export default function View() {
       const key = await importKey(keyBase64)
 
       // 获取密码哈希
-      const pwHash = password ? await hashPassword(password) : null
+      const pwHash = (password && passwordSalt) ? await hashPassword(password, passwordSalt) : null
 
       // 读取笔记（服务器将立即删除）
       const data = await readNote(id, pwHash)

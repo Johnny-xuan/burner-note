@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Flame, Lock, Clock, Paperclip, Copy, Check, X, Loader2 } from 'lucide-react'
-import { generateKey, exportKey, encryptText, encryptFile, hashPassword } from '../utils/crypto'
+import { generateKey, exportKey, encryptText, encryptFile, hashPassword, generatePasswordSalt } from '../utils/crypto'
 import { createNote } from '../utils/api'
 import { useTranslation } from '../utils/LanguageContext'
 
@@ -85,13 +85,15 @@ export default function Create() {
       }
 
       // 密码哈希（可选）
-      const pwHash = password ? await hashPassword(password) : null
+      const pwSalt = password ? await generatePasswordSalt() : null
+      const pwHash = password ? await hashPassword(password, pwSalt) : null
 
       // 创建笔记
       const result = await createNote({
         ciphertext: encrypted.ciphertext,
         iv: encrypted.iv,
         passwordHash: pwHash,
+        passwordSalt: pwSalt,
         expiresIn
       }, encryptedFiles)
 

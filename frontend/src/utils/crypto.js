@@ -96,19 +96,35 @@ export async function decryptFile(encryptedBase64, key, mimeType) {
 }
 
 // 生成密码哈希 (用于验证，不是加密密钥)
-export async function hashPassword(password) {
+export async function generatePasswordSalt() {
+  const salt = crypto.getRandomValues(new Uint8Array(16))
+  return arrayBufferToBase64(salt)
+}
+
+export async function hashPassword(password, salt) {
   const encoder = new TextEncoder()
-  const data = encoder.encode(password)
-  const hash = await crypto.subtle.digest('SHA-256', data)
-  return arrayBufferToBase64(hash)
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  )
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: base64ToArrayBuffer(salt), iterations: 100_000, hash: 'SHA-256' },
+    keyMaterial,
+    256
+  )
+  return arrayBufferToBase64(bits)
 }
 
 // 工具函数
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer)
+  const CHUNK = 8192
   let binary = ''
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i])
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
   }
   return btoa(binary)
 }

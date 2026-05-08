@@ -9,7 +9,11 @@ export async function createNote(data, files = []) {
   if (data.passwordHash) {
     formData.append('passwordHash', data.passwordHash)
   }
-  
+
+  if (data.passwordSalt) {
+    formData.append('passwordSalt', data.passwordSalt)
+  }
+
   if (files.length > 0) {
     const fileMetadata = []
     for (const file of files) {
