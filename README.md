@@ -9,10 +9,9 @@
 </p>
 
 <p align="center">
-  <a href="https://burnernote.j-o-x.tech">Live Demo</a> •
   <a href="#features">Features</a> •
   <a href="#how-it-works">How It Works</a> •
-  <a href="#security-disclosure">Security</a>
+  <a href="#security">Security</a>
 </p>
 
 ---
@@ -54,7 +53,7 @@ npm install
 npm run dev
 ```
 
-Visit: [https://burnernote.j-o-x.tech](https://burnernote.j-o-x.tech)
+Visit `http://localhost:5173`.
 
 ### Production Deployment
 
@@ -62,7 +61,7 @@ Visit: [https://burnernote.j-o-x.tech](https://burnernote.j-o-x.tech)
 docker-compose up -d --build
 ```
 
-The service will be available at [https://burnernote.j-o-x.tech](https://burnernote.j-o-x.tech) (or your configured domain).
+The service will be available at your configured domain (set `FRONTEND_URL` and reverse-proxy as needed).
 
 ## How It Works
 
